@@ -1,5 +1,22 @@
 from active_semi_clustering.exceptions import InconsistentConstraintsException
+from scipy.sparse import coo_matrix
 
+def to_sparse_mtx(ml, cl, n, w_m=1, w_c=1):
+    '''
+    Convert ml and cl into a n x n sparse matrix with 
+    values w_m and w_c for must and cannot link constraints respectively
+    '''
+
+    coords = np.array(ml + cl) # concat, not add
+    data = np.zeros(len(ml) + len(cl))
+
+    data[:len(ml)] = w_m
+    data[len(ml):] = w_c
+
+    if len(coords) != len(data):
+        raise TypeError('ml, cl must be lists, not numpy arrays')
+
+    return coo_matrix((data, (coords[:,0], coords[:,1])), shape=(n, n))
 
 # Taken from https://github.com/Behrouz-Babaki/COP-Kmeans/blob/master/copkmeans/cop_kmeans.py
 def preprocess_constraints(ml, cl, n):

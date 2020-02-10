@@ -11,6 +11,7 @@ class COPKMeans:
 
     def fit(self, X, y=None, ml=[], cl=[]):
         ml_graph, cl_graph, neighborhoods = preprocess_constraints(ml, cl, X.shape[0])
+        # TODO: neighborhoods is expensive to compute (runs DFS on everything), but not used. Remove this.
 
         # Initialize cluster centers
         cluster_centers = self._init_cluster_centers(X)

@@ -1,5 +1,7 @@
 import numpy as np
 
+from scipy.spatial.distance import cdist, pdist
+
 from .example_oracle import MaximumQueriesExceeded
 from .explore_consolidate import ExploreConsolidate
 
@@ -8,31 +10,39 @@ class MinMax(ExploreConsolidate):
     def _consolidate(self, neighborhoods, X, oracle):
         n = X.shape[0]
 
-        skeleton = set()
-        for neighborhood in neighborhoods:
-            for i in neighborhood:
-                skeleton.add(i)
+        # skeleton = set()
+        # for neighborhood in neighborhoods:
+        #     for i in neighborhood:
+        #         skeleton.add(i)
 
-        remaining = set()
-        for i in range(n):
-            if i not in skeleton:
-                remaining.add(i)
+        # remaining = set()
+        # for i in range(n):
+        #     if i not in skeleton:
+        #         remaining.add(i)
 
-        distances = np.zeros((n, n))
-        for i in range(n):
-            for j in range(n):
-                distances[i, j] = np.sqrt(((X[i] - X[j]) ** 2).sum())
+        skeleton = {elem for elem in neigh for neigh in neighbourhoods} # traversed_idx
+        remaining = set(range(n)) - skeleton # untraversed_idx
+
+
+        # distances = np.zeros((n, n))
+        # for i in range(n):
+        #     for j in range(n):
+        #         distances[i, j] = np.sqrt(((X[i] - X[j]) ** 2).sum())
+
+        distances = pdist(X)
 
         kernel_width = np.percentile(distances, 20)
 
         while True:
             try:
+                # Find the element that is least far away from the furthest element (i.e. in the centre of the clusters), store it in q_i
                 max_similarities = np.full(n, fill_value=float('+inf'))
                 for x_i in remaining:
                     max_similarities[x_i] = np.max([similarity(X[x_i], X[x_j], kernel_width) for x_j in skeleton])
 
                 q_i = max_similarities.argmin()
 
+                # Query oracle with elements as far away as possible from q_i
                 sorted_neighborhoods = reversed(sorted(neighborhoods, key=lambda neighborhood: np.max([similarity(X[q_i], X[n_i], kernel_width) for n_i in neighborhood])))
 
                 for neighborhood in sorted_neighborhoods:
