@@ -27,7 +27,7 @@ class PCKMeans:
 
         for _ in range(self.n_init):
             # Initialize centroids
-            cluster_centers = self._initialize_cluster_centers(X, neighborhoods)
+            cluster_centers = self._initialize_cluster_centers(X)
 
             # Repeat until convergence
             for iteration in range(self.max_iter):
@@ -54,25 +54,24 @@ class PCKMeans:
 
         return self
 
-    def _initialize_cluster_centers(self, X, neighborhoods):
-        neighborhood_centers = np.squeeze(np.array([X[neighborhood].mean(axis=0) for neighborhood in neighborhoods]))
-        neighborhood_sizes = np.array([len(neighborhood) for neighborhood in neighborhoods])
+    def _initialize_cluster_centers(self, X):
+        '''kmeans++: https://en.wikipedia.org/wiki/K-means%2B%2B'''
 
-        if len(neighborhoods) > self.n_clusters:
-            # Select K largest neighborhoods' centroids
-            cluster_centers = neighborhood_centers[np.argsort(neighborhood_sizes)[-self.n_clusters:]]
-        else:
-            if len(neighborhoods) > 0:
-                cluster_centers = neighborhood_centers
-            else:
-                cluster_centers = np.empty((0, X.shape[1]))
+        # choose a random point
+        n = X.shape[0]
+        cluster_centers = X[np.random.randint(n)]
+        cluster_centers = np.expand_dims(cluster_centers, axis=0)
 
-            # FIXME look for a point that is connected by cannot-links to every neighborhood set
+        for _ in range(self.n_clusters - 1):
+            dists = cdist(X, cluster_centers, 'sqeuclidean').min(axis=1)
+            dists /= dists.sum()
 
-            if len(neighborhoods) < self.n_clusters:
-                remaining_cluster_centers = X[np.random.choice(X.shape[0], self.n_clusters - len(neighborhoods), replace=False), :]
-                cluster_centers = np.concatenate([cluster_centers, remaining_cluster_centers])
+            # select a cluster with probability D^2. We don't need to remove used clusters
+            # because they have probability 0
+            new_center = np.expand_dims(X[np.random.choice(n, p=dists)], axis=0)
+            cluster_centers = np.concatenate((cluster_centers, new_center))
 
+            print(cluster_centers.shape)
 
         return cluster_centers
 
@@ -88,7 +87,7 @@ class PCKMeans:
         # This version doesn't apply transitivity to constraints.
 
         n = X.shape[0]
-        k = len(cluster_centers)
+        k = self.n_clusters
 
         # Label without constraints
         initial_weights = cdist(X, cluster_centers, 'euclidean') # n x k 
@@ -96,13 +95,13 @@ class PCKMeans:
 
         for i in range(2):
             # Apply must-link constraints
-            ml_weights = np.zeros((n, k))
+            ml_weights = np.zeros((n, k), dtype=np.int32)
             for (i, j) in ml:
                 ml_weights[i, tentative_labels[j]] += 1
                 ml_weights[j, tentative_labels[i]] += 1
 
             # Apply cannot link constraints
-            cl_weights = np.zeros((n, k))
+            cl_weights = np.zeros((n, k), dtype=np.int32)
             for (i, j) in cl:
                 cl_weights[i, tentative_labels[j]] += 1
                 cl_weights[j, tentative_labels[i]] += 1
@@ -111,6 +110,7 @@ class PCKMeans:
             weights = initial_weights - w_m * ml_weights + w_c * cl_weights
             tentative_labels = weights.argmin(axis=1)
             score = weights.min(axis=1).sum()
+
         labels = tentative_labels
 
         # Handle empty clusters
