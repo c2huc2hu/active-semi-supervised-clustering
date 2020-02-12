@@ -47,7 +47,7 @@ class PCKMeansTest(IrisBase):
 
 class OldPCKMeansTest(IrisBase):
     def test(self):
-        oracle = ExampleOracle(self.y, max_queries_cnt=10)
+        oracle = ExampleOracle(self.y, max_queries_cnt=100)
 
         active_learner = Random(n_clusters=3)
         active_learner.fit(self.X, oracle=oracle)
@@ -66,7 +66,3 @@ class OldPCKMeansTest(IrisBase):
 
 if __name__ == "__main__":
     unittest.main()
-
-    print('HI THERE')
-    print(PCKMeansTest.test())
-

@@ -59,19 +59,20 @@ class PCKMeans:
 
         # choose a random point
         n = X.shape[0]
-        cluster_centers = X[np.random.randint(n)]
-        cluster_centers = np.expand_dims(cluster_centers, axis=0)
+        new_center = np.expand_dims(X[np.random.randint(n)], axis=0)
+        cluster_centers = new_center
 
-        for _ in range(self.n_clusters - 1):
-            dists = cdist(X, cluster_centers, 'sqeuclidean').min(axis=1)
-            dists /= dists.sum()
+        min_dists = np.full((n), np.inf)
 
-            # select a cluster with probability D^2. We don't need to remove used clusters
-            # because they have probability 0
-            new_center = np.expand_dims(X[np.random.choice(n, p=dists)], axis=0)
+        for i in range(self.n_clusters - 1):
+            # Compute distances to new center and compare them to existing ones
+            dists = np.squeeze(cdist(X, new_center, 'sqeuclidean'))
+            min_dists = np.minimum(dists, min_dists)
+
+            # select a cluster with probability proportional to D^2. We don't 
+            # need to remove used clusters because they have probability 0
+            new_center = np.expand_dims(X[np.random.choice(n, p=(min_dists / min_dists.sum()))], axis=0)
             cluster_centers = np.concatenate((cluster_centers, new_center))
-
-            print(cluster_centers.shape)
 
         return cluster_centers
 
