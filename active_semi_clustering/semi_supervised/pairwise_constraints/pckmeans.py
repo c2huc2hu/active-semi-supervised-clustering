@@ -90,22 +90,23 @@ class PCKMeans:
         n = X.shape[0]
         k = self.n_clusters
 
+        ml = np.array(ml)
+        cl = np.array(cl)
+
         # Label without constraints
-        initial_weights = cdist(X, cluster_centers, 'euclidean') # n x k 
+        initial_weights = cdist(X, cluster_centers, 'cosine') # n x k 
         tentative_labels = initial_weights.argmin(axis=1)
 
         for i in range(2):
             # Apply must-link constraints
             ml_weights = np.zeros((n, k), dtype=np.int32)
-            for (i, j) in ml:
-                ml_weights[i, tentative_labels[j]] += 1
-                ml_weights[j, tentative_labels[i]] += 1
-
-            # Apply cannot link constraints
             cl_weights = np.zeros((n, k), dtype=np.int32)
-            for (i, j) in cl:
-                cl_weights[i, tentative_labels[j]] += 1
-                cl_weights[j, tentative_labels[i]] += 1
+
+            ml_weights[ml[:,0], tentative_labels[ml[:,1]]] += 1
+            ml_weights[ml[:,1], tentative_labels[ml[:,0]]] += 1
+
+            cl_weights[cl[:,0], tentative_labels[cl[:,1]]] += 1
+            cl_weights[cl[:,1], tentative_labels[cl[:,0]]] += 1
 
             # Label
             weights = initial_weights - w_m * ml_weights + w_c * cl_weights
